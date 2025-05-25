@@ -51,9 +51,6 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 
 				var children []fileNode
 				for _, e := range dirEntries {
-					if e.Name() == ".DS_Store" {
-						continue
-					}
 					info, _ := e.Info()
 					if info.IsDir() || printFiles {
 						children = append(children, fileNode{
@@ -81,9 +78,6 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 
 	var rootFiles []fileNode
 	for _, e := range dirEntries {
-		if e.Name() == ".DS_Store" {
-			continue
-		}
 		info, _ := e.Info()
 		if info.IsDir() || printFiles {
 			rootFiles = append(rootFiles, fileNode{
