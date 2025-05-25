@@ -55,7 +55,7 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 						continue
 					}
 					info, _ := e.Info()
-					if info.IsDir() || printFiles { // <-- теперь файлы учитываются только с -f
+					if info.IsDir() || printFiles {
 						children = append(children, fileNode{
 							name:  e.Name(),
 							isDir: e.IsDir(),
