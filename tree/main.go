@@ -9,90 +9,53 @@ import (
 )
 
 func dirTree(out io.Writer, path string, printFiles bool) error {
-	type fileNode struct {
-		name  string
-		isDir bool
-		size  int64
-	}
+	var walk func(string, string, bool) error
+	walk = func(path, prefix string, isLast bool) error {
+		files, _ := os.ReadDir(path)
+		var list []os.DirEntry
 
-	var buildTree func(string, []fileNode, string) error
-	buildTree = func(path string, files []fileNode, prefix string) error {
-		for i, f := range files {
-			isLast := i == len(files)-1
+		for _, f := range files {
+			if f.IsDir() || printFiles {
+				list = append(list, f)
+			}
+		}
+
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].Name() < list[j].Name()
+		})
+
+		for i, f := range list {
+			isLast := i == len(list)-1
 			branch := "├───"
 			if isLast {
 				branch = "└───"
 			}
+			name := f.Name()
 
-			fmt.Fprintf(out, "%s%s%s", prefix, branch, f.name)
-
-			if !f.isDir {
-				if f.size == 0 {
-					fmt.Fprint(out, " (empty)")
+			info, _ := f.Info()
+			if !f.IsDir() {
+				if info.Size() == 0 {
+					name += " (empty)"
 				} else {
-					fmt.Fprintf(out, " (%db)", f.size)
+					name += fmt.Sprintf(" (%db)", info.Size())
 				}
 			}
-			fmt.Fprintln(out)
 
-			if f.isDir {
+			fmt.Fprint(out, prefix+branch+name+"\n")
+
+			if f.IsDir() {
 				nextPrefix := prefix
 				if !isLast {
 					nextPrefix += "│\t"
 				} else {
 					nextPrefix += "\t"
 				}
-
-				dirPath := filepath.Join(path, f.name)
-				dirEntries, err := os.ReadDir(dirPath)
-				if err != nil {
-					return err
-				}
-
-				var children []fileNode
-				for _, e := range dirEntries {
-					info, _ := e.Info()
-					if info.IsDir() || printFiles {
-						children = append(children, fileNode{
-							name:  e.Name(),
-							isDir: e.IsDir(),
-							size:  info.Size(),
-						})
-					}
-				}
-
-				sort.Slice(children, func(i, j int) bool {
-					return children[i].name < children[j].name
-				})
-
-				buildTree(dirPath, children, nextPrefix)
+				walk(filepath.Join(path, f.Name()), nextPrefix, isLast)
 			}
 		}
 		return nil
 	}
-
-	dirEntries, err := os.ReadDir(path)
-	if err != nil {
-		return err
-	}
-
-	var rootFiles []fileNode
-	for _, e := range dirEntries {
-		info, _ := e.Info()
-		if info.IsDir() || printFiles {
-			rootFiles = append(rootFiles, fileNode{
-				name:  e.Name(),
-				isDir: e.IsDir(),
-				size:  info.Size(),
-			})
-		}
-	}
-
-	sort.Slice(rootFiles, func(i, j int) bool {
-		return rootFiles[i].name < rootFiles[j].name
-	})
-
-	return buildTree(path, rootFiles, "")
+	return walk(path, "", true)
 }
 
 func main() {
