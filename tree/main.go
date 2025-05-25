@@ -55,11 +55,13 @@ func dirTree(out io.Writer, path string, printFiles bool) error {
 						continue
 					}
 					info, _ := e.Info()
-					children = append(children, fileNode{
-						name:  e.Name(),
-						isDir: e.IsDir(),
-						size:  info.Size(),
-					})
+					if info.IsDir() || printFiles { // <-- теперь файлы учитываются только с -f
+						children = append(children, fileNode{
+							name:  e.Name(),
+							isDir: e.IsDir(),
+							size:  info.Size(),
+						})
+					}
 				}
 
 				sort.Slice(children, func(i, j int) bool {
