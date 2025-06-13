@@ -9,53 +9,59 @@ import (
 )
 
 func dirTree(out io.Writer, path string, printFiles bool) error {
-	var walk func(string, string, bool) error
-	walk = func(path, prefix string, isLast bool) error {
-		files, _ := os.ReadDir(path)
-		var list []os.DirEntry
+	return walk(out, path, printFiles, "", true)
+}
 
-		for _, f := range files {
-			if f.IsDir() || printFiles {
-				list = append(list, f)
-			}
-		}
-
-		sort.Slice(list, func(i, j int) bool {
-			return list[i].Name() < list[j].Name()
-		})
-
-		for i, f := range list {
-			isLast := i == len(list)-1
-			branch := "├───"
-			if isLast {
-				branch = "└───"
-			}
-			name := f.Name()
-
-			info, _ := f.Info()
-			if !f.IsDir() {
-				if info.Size() == 0 {
-					name += " (empty)"
-				} else {
-					name += fmt.Sprintf(" (%db)", info.Size())
-				}
-			}
-
-			fmt.Fprint(out, prefix+branch+name+"\n")
-
-			if f.IsDir() {
-				nextPrefix := prefix
-				if !isLast {
-					nextPrefix += "│\t"
-				} else {
-					nextPrefix += "\t"
-				}
-				walk(filepath.Join(path, f.Name()), nextPrefix, isLast)
-			}
-		}
-		return nil
+func walk(out io.Writer, currentPath string, printFiles bool, prefix string, isLast bool) error {
+	files, err := os.ReadDir(currentPath)
+	if err != nil {
+		return err
 	}
-	return walk(path, "", true)
+
+	var list []os.DirEntry
+	for _, f := range files {
+		if f.IsDir() || printFiles {
+			list = append(list, f)
+		}
+	}
+
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].Name() < list[j].Name()
+	})
+
+	for i, f := range list {
+		isLast := i == len(list)-1
+		branch := "├───"
+		if isLast {
+			branch = "└───"
+		}
+		name := f.Name()
+
+		info, _ := f.Info()
+		if !f.IsDir() {
+			if info.Size() == 0 {
+				name += " (empty)"
+			} else {
+				name += fmt.Sprintf(" (%db)", info.Size())
+			}
+		}
+
+		fmt.Fprint(out, prefix+branch+name+"\n")
+
+		if f.IsDir() {
+			nextPrefix := prefix
+			if !isLast {
+				nextPrefix += "│\t"
+			} else {
+				nextPrefix += "\t"
+			}
+			err := walk(out, filepath.Join(currentPath, f.Name()), printFiles, nextPrefix, isLast)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func main() {
